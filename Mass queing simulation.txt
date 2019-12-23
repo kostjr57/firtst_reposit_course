@@ -1,0 +1,458 @@
+#include<iostream>
+#include <cmath>
+#include "lcgrand.h"      
+using namespace std; 
+ 
+/////////////////////////////////////////////////////////////////////////
+const int Queu_Limit=100;
+const int BUSY=1;
+const int IDLE=0;
+ 
+int  
+      choice,
+      Num_Completed_Customers,    //Number of Completed Customers
+      Number_of_Events,           //Number of Events 1.Arriving 2.Completion
+      Number_in_Queue,            //Number of Customers In Queue
+      Server_Status;              //Server Status ( Idle , Busy )
+ 
+double
+      End_Time,
+      Type_Next_Event,
+      Mean_interArrival_Time, 
+      Mean_service_Time,
+      Clock, 
+      Time_Arrival[Queu_Limit + 1], 
+      Service_Time[Queu_Limit + 1],
+      Next_Arrival_Time, 
+      Next_Completion_Time,
+      Next_Service_Time,
+      Total_Flow_Time,
+      Progres_Arrival_Time,
+      Progres_Completion_Time,
+      Waiting_Time;
+ 
+ 
+////////////////////////////////////////////////////////////////////////////
+// Prototype of the System Function
+ 
+void  initialize();
+void  Timing();
+void  Arrival();
+void  Completition();
+float expon(float mean);
+void  Search_Min(double[],double[]);
+ 
+////////////////////////////////////////////////////////////////////////////////////
+//Main Function
+ 
+int main()  
+{
+     
+    initialize();           // Intialization of the System
+ 
+    cout<<"                 * Single-server queueing system with fixed run *\n";
+ 
+    cout<<"                 _________________________________________________"<<endl;
+    
+    cout<<"\n 1.First In First Out"<<endl;
+ 
+    cout<<" 2.Minimum Processing Time"<<endl<<endl;
+ 
+    do
+    {
+    cout<<"\tEnter your Policy: ";
+ 
+    cin>>choice;
+     
+    }while(choice>2||choice<1);
+     
+    cout<<"\nMean Inter arrival Time: "<<Mean_interArrival_Time;
+ 
+    cout<<"\nMean Service Time: "<<Mean_service_Time<<endl;
+ 
+    cout<<"The End of Simulation Time: "<<End_Time<<endl<<endl;
+  
+ 
+    while(true) 
+    {
+         
+        Timing();  // Timing Routine To Determine The Next Event
+ 
+        if(Clock>End_Time)
+           break;
+     
+        switch (int(Type_Next_Event)) 
+        {
+         
+        case 1:
+            Arrival();
+            break;
+             
+        case 2:
+            Completition();
+            break;
+        }
+    } 
+      
+    // Print Summary Statistics.
+     
+    cout<<"\nTotal Flow Time: "<<Total_Flow_Time;
+ 
+    cout<<"\nTotal Waiting Time in Queue: "<<Waiting_Time;
+ 
+    cout<<"\nAverage Waiting Time in Queue: "<<Waiting_Time / Num_Completed_Customers;
+     
+    cout<<"\nAverage Flow Time: "<<Total_Flow_Time / Num_Completed_Customers;
+     
+    cout<<"\nNumber of Completed Customers: "<<Num_Completed_Customers;
+ 
+    cout<<"\nAverage Number of Customers In System / Unit Time: "<<Num_Completed_Customers / Clock<<endl<<endl;
+      
+    return 0;
+}
+ 
+//////////////////////////////////////////////////////////////////////////////
+//Intialization Function
+ 
+void initialize()  
+{
+ 
+    Number_of_Events = 2;      // Arrival , Completion
+     
+    Mean_interArrival_Time=1.0;
+     
+    Mean_service_Time=0.5;
+ 
+    End_Time=100.0;
+     
+    Clock = 0.0;
+     
+    Server_Status = IDLE;
+     
+    Number_in_Queue = 0;
+ 
+    Num_Completed_Customers = 0;
+ 
+    Total_Flow_Time = 0.0;
+ 
+    Waiting_Time = 0.0;
+ 
+    Next_Arrival_Time = Clock + expon(Mean_interArrival_Time);//Arriving
+     
+    Next_Service_Time = expon(Mean_service_Time);
+     
+    Next_Completion_Time = 1.0e+10;    // Completing  Guarantening that the first event is arriving
+ 
+    Progres_Arrival_Time=0.0;
+ 
+    Progres_Completion_Time = 0.0;
+}
+//////////////////////////////////////////////////////////////////////////////
+// Timing Routine Function
+ 
+void Timing()  
+{
+    Type_Next_Event = 0;
+ 
+    if(Next_Arrival_Time < Next_Completion_Time)
+    {
+         
+        Type_Next_Event = 1;
+         
+        Clock=Next_Arrival_Time;
+ 
+    }
+     
+    else
+    {
+        Type_Next_Event = 2;
+ 
+        Clock = Next_Completion_Time;
+ 
+    }
+     
+    if (Type_Next_Event == 0) 
+    {
+        cout<<"\nEvent List Empty at Time: "<<Clock;
+        
+        exit(1);
+    }       
+ 
+}
+ 
+////////////////////////////////////////////////////////////////////////////
+// Arriving Customer function
+ 
+void Arrival()  
+{
+    if (Server_Status == BUSY) 
+    {
+        ++Number_in_Queue;
+ 
+        if (Number_in_Queue > Queu_Limit) 
+        {
+            cout<<"\nOverflow of the array time_arrival at";
+             
+            cout<<"time: "<<Clock;
+             
+            exit(2);
+        }
+ 
+        Time_Arrival[Number_in_Queue] = Clock;
+ 
+        Service_Time[Number_in_Queue] = Next_Service_Time;
+ 
+    }
+ 
+    else
+    {
+        Server_Status = BUSY;
+         
+        Next_Completion_Time = Clock + Next_Service_Time;
+ 
+        Progres_Arrival_Time = Next_Arrival_Time;
+ 
+        Progres_Completion_Time = Next_Completion_Time;
+         
+    }
+ 
+    Next_Arrival_Time = Clock + expon(Mean_interArrival_Time);
+ 
+    Next_Service_Time = expon(Mean_service_Time);
+     
+     
+}
+/////////////////////////////////////////////////////////////////////////////
+// Completion Customer Function
+ 
+void Completition() 
+{
+ 
+    double Delay;
+ 
+    ++Num_Completed_Customers;
+     
+    Total_Flow_Time+= ( Progres_Completion_Time - Progres_Arrival_Time );
+ 
+ 
+    if (Number_in_Queue == 0) 
+    {
+        Server_Status= IDLE;
+ 
+        Next_Completion_Time = 1.0e+10;      // High Value
+    }
+ 
+    else
+    {
+ 
+        if(choice==2)
+            Search_Min(Time_Arrival,Service_Time);    // Minimum Processing Time
+         
+        Delay= Clock - Time_Arrival[1];
+ 
+        Waiting_Time+= Delay;
+     
+        Next_Completion_Time = Clock + Service_Time[1]; 
+ 
+        Progres_Arrival_Time = Time_Arrival[1];
+ 
+        Progres_Completion_Time = Next_Completion_Time; 
+                 
+        --Number_in_Queue;
+         
+        for (int i=1;i<=Number_in_Queue;i++)
+        {
+            Time_Arrival[i] = Time_Arrival[i + 1];
+             
+            Service_Time[i] = Service_Time[i + 1];
+        }
+         
+    }
+}
+ 
+/////////////////////////////////////////////////////////////////////////
+//Sort Functtion
+void Search_Min(double A_time[],double S_time[])
+{
+    int Min=1;
+ 
+    double temp;
+ 
+    for(int i=1;i<Number_in_Queue;i++)
+        if(S_time[Min]>S_time[i+1])
+            Min=i+1;
+         
+    temp=S_time[1];
+    S_time[1]=S_time[Min];
+    S_time[Min]=temp;
+                 
+    temp=A_time[1];
+    A_time[1]=A_time[Min];
+    A_time[Min]=temp;
+ 
+}
+ 
+///////////////////////////////////////////////////////////////////////////
+// Generate The Rondom Number
+ 
+float expon(float mean)  
+{
+    return (-mean * log(lcgrand(1)));
+}
+
+
+lcgrand.h:
+cpp code 
+?
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75
+76
+float lcgrand(int stream);
+ 
+/* Prime modulus multiplicative linear congruential generator
+   Z[i] = (630360016 * Z[i-1]) (mod(pow(2,31) - 1)), based on Marse and Roberts'
+   portable FORTRAN random-number generator UNIRAN.  Multiple (100) streams are
+   supported, with seeds spaced 100,000 apart.  Throughout, input argument
+   "stream" must be an int giving the desired stream number.  The header file
+   lcgrand.h must be included in the calling program (#include "lcgrand.h")
+   before using these functions.
+ 
+   Usage: (Three functions)
+ 
+   1. To obtain the next U(0,1) random number from stream "stream," execute
+          u = lcgrand(stream);
+      where lcgrand is a float function.  The float variable u will contain the
+      next random number.
+ 
+   2. To set the seed for stream "stream" to a desired value zset, execute
+          lcgrandst(zset, stream);
+      where lcgrandst is a void function and zset must be a long set to the
+      desired seed, a number between 1 and 2147483646 (inclusive).  Default
+      seeds for all 100 streams are given in the code.
+ 
+   3. To get the current (most recently used) integer in the sequence being
+      generated for stream "stream" into the long variable zget, execute
+          zget = lcgrandgt(stream);
+      where lcgrandgt is a long function. */
+ 
+/* Define the constants. */
+ 
+#define MODLUS 2147483647
+#define MULT1       24112
+#define MULT2       26143
+ 
+/* Set the default seeds for all 100 streams. */
+ 
+static long zrng[] =
+{         1,
+ 1973272912, 281629770,  20006270,1280689831,2096730329,1933576050,
+  913566091, 246780520,1363774876, 604901985,1511192140,1259851944,
+  824064364, 150493284, 242708531,  75253171,1964472944,1202299975,
+  233217322,1911216000, 726370533, 403498145, 993232223,1103205531,
+  762430696,1922803170,1385516923,  76271663, 413682397, 726466604,
+  336157058,1432650381,1120463904, 595778810, 877722890,1046574445,
+   68911991,2088367019, 748545416, 622401386,2122378830, 640690903,
+ 1774806513,2132545692,2079249579,  78130110, 852776735,1187867272,
+ 1351423507,1645973084,1997049139, 922510944,2045512870, 898585771,
+  243649545,1004818771, 773686062, 403188473, 372279877,1901633463,
+  498067494,2087759558, 493157915, 597104727,1530940798,1814496276,
+  536444882,1663153658, 855503735,  67784357,1432404475, 619691088,
+  119025595, 880802310, 176192644,1116780070, 277854671,1366580350,
+ 1142483975,2026948561,1053920743, 786262391,1792203830,1494667770,
+ 1923011392,1433700034,1244184613,1147297105, 539712780,1545929719,
+  190641742,1645390429, 264907697, 620389253,1502074852, 927711160,
+  364849192,2049576050, 638580085, 547070247 };
+ 
+/* Generate the next random number. */
+ 
+float lcgrand(int stream)
+{
+    long zi, lowprd, hi31;
+ 
+    zi     = zrng[stream];
+    lowprd = (zi & 65535) * MULT1;
+    hi31   = (zi >> 16) * MULT1 + (lowprd >> 16);
+    zi     = ((lowprd & 65535) - MODLUS) +
+             ((hi31 & 32767) << 16) + (hi31 >> 15);
+    if (zi < 0) zi += MODLUS;
+    lowprd = (zi & 65535) * MULT2;
+    hi31   = (zi >> 16) * MULT2 + (lowprd >> 16);
+    zi     = ((lowprd & 65535) - MODLUS) +
+             ((hi31 & 32767) << 16) + (hi31 >> 15);
+    if (zi < 0) zi += MODLUS;
+    zrng[stream] = zi;
+    return (zi >> 7 | 1) / 16777216.0;
+}
